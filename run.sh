@@ -1,0 +1,1 @@
+python transform_poc.py --source-dir car-engine-json --target-dir project-commodity-json engine=project car=commodity gas=project1 electric=project2 hybrid=project3 sedan=commodity1 suv=commodity2
