@@ -1,0 +1,9 @@
+
+{
+"name": "electric-dev",
+"uuid": "987fcdeb-12d3-4e5a-b678-426614174001",
+"batteryCapacity": 75,
+"rangeMiles": 250,
+"chargingTypes": ["fast", "standard"],
+"carUuids": ["abcdef12-3456-7890-abcd-ef1234567890", "789abcde-f123-4567-89ab-cdef12345678"]
+}

@@ -1,0 +1,26 @@
+
+{
+"$schema": "http://json-schema.org/draft-07/schema#",
+"type": "object",
+"properties": {
+"name": { "type": "string" },
+"uuid": { "type": "string", "format": "uuid" },
+"model": { "type": "string" },
+"maxSpeed": {
+"type": "integer",
+"minimum": 100,
+"maximum": 180
+},
+"features": {
+"type": "array",
+"items": { "type": "string" },
+"uniqueItems": true
+},
+"engineUuids": {
+"type": "array",
+"items": { "type": "string" },
+"uniqueItems": true
+}
+},
+"required": ["name", "uuid", "model", "engineUuids"]
+}

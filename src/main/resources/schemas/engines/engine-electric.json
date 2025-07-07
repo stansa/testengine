@@ -1,0 +1,30 @@
+
+{
+"$schema": "http://json-schema.org/draft-07/schema#",
+"type": "object",
+"properties": {
+"name": { "type": "string" },
+"uuid": { "type": "string", "format": "uuid" },
+"batteryCapacity": {
+"type": "integer",
+"minimum": 50,
+"maximum": 200
+},
+"rangeMiles": {
+"type": "integer",
+"minimum": 100,
+"maximum": 500
+},
+"chargingTypes": {
+"type": "array",
+"items": { "type": "string" },
+"uniqueItems": true
+},
+"carUuids": {
+"type": "array",
+"items": { "type": "string", "format": "uuid" },
+"uniqueItems": true
+}
+},
+"required": ["name", "uuid", "batteryCapacity", "carUuids"]
+}

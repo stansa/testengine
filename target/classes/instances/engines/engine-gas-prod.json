@@ -1,0 +1,8 @@
+{
+"name": "gas-prod",
+"uuid": "123e4567-e89b-12d3-a456-426614174000",
+"horsepower": 300,
+"fuelEfficiency": 25.5,
+"fuelTypes": ["premium", "regular"],
+"carUuids": ["abcdef12-3456-7890-abcd-ef1234567890", "789abcde-f123-4567-89ab-cdef12345678"]
+}

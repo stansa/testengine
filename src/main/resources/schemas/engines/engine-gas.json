@@ -1,0 +1,30 @@
+
+{
+"$schema": "http://json-schema.org/draft-07/schema#",
+"type": "object",
+"properties": {
+"name": { "type": "string" },
+"uuid": { "type": "string", "format": "uuid" },
+"horsepower": {
+"type": "integer",
+"minimum": 100,
+"maximum": 500
+},
+"fuelEfficiency": {
+"type": "number",
+"minimum": 10,
+"maximum": 50
+},
+"fuelTypes": {
+"type": "array",
+"items": { "type": "string" },
+"uniqueItems": true
+},
+"carUuids": {
+"type": "array",
+"items": { "type": "string", "format": "uuid" },
+"uniqueItems": true
+}
+},
+"required": ["name", "uuid", "horsepower", "carUuids"]
+}

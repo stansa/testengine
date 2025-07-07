@@ -1,0 +1,9 @@
+
+{
+"name": "suv-adventure",
+"uuid": "789abcde-f123-4567-89ab-cdef12345678",
+"model": "AdventureSUV2023",
+"maxSpeed": 140,
+"features": ["all-wheel-drive", "roof-rack"],
+"engineUuids": ["123e4567-e89b-12d3-a456-426614174000", "987fcdeb-12d3-4e5a-b678-426614174001"]
+}

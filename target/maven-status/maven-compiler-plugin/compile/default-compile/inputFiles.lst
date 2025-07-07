@@ -1,0 +1,10 @@
+/Users/stansantiago/car-engine/src/main/java/com/example/App.java
+/Users/stansantiago/car-engine/src/main/java/com/example/Main.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/EngineService.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/EngineValidation.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/SchemaTypeMapping.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/generated/cars/CarSedan.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/generated/cars/CarSuv.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/generated/engines/EngineElectric.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/generated/engines/EngineGas.java
+/Users/stansantiago/car-engine/src/main/java/com/example/engine/generated/engines/EngineHybrid.java

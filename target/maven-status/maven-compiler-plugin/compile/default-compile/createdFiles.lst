@@ -1,0 +1,10 @@
+com/example/engine/generated/engines/EngineGas.class
+com/example/App.class
+com/example/engine/generated/cars/CarSedan.class
+com/example/engine/EngineValidation.class
+com/example/engine/EngineService.class
+com/example/engine/SchemaTypeMapping.class
+com/example/engine/generated/engines/EngineHybrid.class
+com/example/engine/generated/cars/CarSuv.class
+com/example/engine/generated/engines/EngineElectric.class
+com/example/Main.class

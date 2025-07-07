@@ -1,0 +1,9 @@
+
+{
+"name": "hybrid-test",
+"uuid": "456789ab-cdef-1234-5678-90abcdef1234",
+"horsepower": 200,
+"batteryCapacity": 20,
+"fuelEfficiency": 45.0,
+"carUuids": ["abcdef12-3456-7890-abcd-ef1234567890", "789abcde-f123-4567-89ab-cdef12345678"]
+}
