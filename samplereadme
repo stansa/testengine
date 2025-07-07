@@ -1,0 +1,192 @@
+# Car Engine JSON POC
+
+This repository contains a Proof of Concept (POC) for managing car and engine relationships using JSON schemas, programmatic validation, and generated Java classes. The POC validates JSON instances against schemas, generates non-JavaBean Java classes, maps class names to schema types in a JSON file, and provides a service to retrieve engines for cars.
+
+## Overview
+
+The `car-engine-json` POC demonstrates a workflow where developers:
+- Author JSON schemas and instances for engines and cars.
+- Validate instances programmatically, generating a `relationships.json` file mapping car UUIDs to engine UUIDs and a `schema-type-mapping.json` file mapping generated class names to schema types.
+- Generate Java classes from schemas using `jsonschema2pojo-maven-plugin`.
+- Use a service (`EngineService`) to retrieve engines for a given car UUID, leveraging `schema-type-mapping.json`.
+- Transform the POC to a new domain (e.g., `project-commodity-json`) using a Python script.
+
+## Requirements
+
+- **JSON Schemas and Instances**:
+  - Schemas in `src/main/resources/schemas/engines/` (e.g., `engine-gas.json`) and `src/main/resources/schemas/cars/` (e.g., `car-sedan.json`).
+  - Instances in `src/main/resources/instances/engines/` (e.g., `engine-gas-prod.json`) and `src/main/resources/instances/cars/` (e.g., `car-sedan.json`).
+- **Validation**: Programmatic validation of instances against schemas using `EngineValidation`, generating `relationships.json` and `schema-type-mapping.json`.
+- **Class Generation**: Non-JavaBean classes (public fields, no getters/setters, no annotations) generated in `com.example.engine.generated.engines` (e.g., `EngineGas`) and `com.example.engine.generated.cars` (e.g., `CarSedan`) via `mvn generate-sources`.
+- **Schema Type Mapping**: Generate `schema-type-mapping.json` in `src/main/resources/generated/` after validation and class generation, mapping class names to schema types (e.g., `com.example.engine.generated.engines.EngineGas` to `engine-gas`).
+- **Service**: `EngineService` with `getEngineForCar` to retrieve engines by car UUID, using `schema-type-mapping.json`.
+- **Main Program**: `Main` accepts a `"validate"` argument to run validation and generate `relationships.json` and `schema-type-mapping.json`, otherwise calls `getEngineForCar`.
+- **Testing**: JUnit tests in `AppTest` for `getEngineForCar`.
+- **Transformation**: Support transformation to a new domain (e.g., `project-commodity-json`) using `transform_poc.py`.
+
+## Repository Tree
+
+```
+car-engine-json/
+├── pom.xml
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/example/
+│   │   │       ├── engine/
+│   │   │       │   ├── EngineService.java
+│   │   │       │   ├── EngineValidation.java
+│   │   │       │   └── generated/
+│   │   │       │       ├── engines/
+│   │   │       │       │   ├── EngineGas.java
+│   │   │       │       │   ├── EngineElectric.java
+│   │   │       │       │   ├── EngineHybrid.java
+│   │   │       │       └── cars/
+│   │   │       │           ├── CarSedan.java
+│   │   │       │           ├── CarSuv.java
+│   │   │       └── Main.java
+│   │   └── resources/
+│   │       ├── schemas/
+│   │       │   ├── engines/
+│   │       │   │   ├── engine-gas.json
+│   │       │   │   ├── engine-electric.json
+│   │       │   │   ├── engine-hybrid.json
+│   │       │   └── cars/
+│   │       │       ├── car-sedan.json
+│   │       │       ├── car-suv.json
+│   │       ├── instances/
+│   │       │   ├── engines/
+│   │       │   │   ├── engine-gas-prod.json
+│   │       │   │   ├── engine-electric-dev.json
+│   │       │   │   ├── engine-hybrid-test.json
+│   │       │   └── cars/
+│   │       │       ├── car-sedan.json
+│   │       │       ├── car-suv-prod.json
+│   │       ├── generated/
+│   │       │   ├── relationships.json
+│   │       │   └── schema-type-mapping.json
+│   └── test/
+│       └── java/
+│           └── com/example/
+│               └── AppTest.java
+├── transform_poc.py
+```
+
+## Entities
+
+- **JSON Schemas**:
+  - **Engines**: `engine-gas.json`, `engine-electric.json`, `engine-hybrid.json` in `src/main/resources/schemas/engines/`.
+    - Properties: `name` (string), `uuid` (UUID), `horsepower` (integer), `fuelEfficiency` (number), `fuelTypes` (string array), `carUuids` (UUID array), etc.
+  - **Cars**: `car-sedan.json`, `car-suv.json` in `src/main/resources/schemas/cars/`.
+    - Properties: `name` (string), `uuid` (UUID), `model` (string), `maxSpeed` (integer), `features` (string array), `engineUuids` (UUID array).
+- **JSON Instances**:
+  - **Engines**: `engine-gas-prod.json`, `engine-electric-dev.json`, `engine-hybrid-test.json` in `src/main/resources/instances/engines/`.
+  - **Cars**: `car-sedan.json`, `car-suv-prod.json` in `src/main/resources/instances/cars/`.
+- **Generated Classes**:
+  - **Engines**: `EngineGas`, `EngineElectric`, `EngineHybrid` in `com.example.engine.generated.engines`.
+  - **Cars**: `CarSedan`, `CarSuv` in `com.example.engine.generated.cars`.
+  - Non-JavaBean: Public fields, no getters/setters, no annotations.
+- **Generated JSON Files**:
+  - `relationships.json`: Maps car UUIDs to engine UUIDs (e.g., `{"abcdef12-...": ["123e4567-...", ...]}`).
+  - `schema-type-mapping.json`: Maps fully qualified class names to schema types (e.g., `{"com.example.engine.generated.engines.EngineGas": "engine-gas"}`).
+- **Java Classes**:
+  - `EngineValidation.java`: Validates instances, generates `relationships.json` and `schema-type-mapping.json`.
+  - `EngineService.java`: Implements `getEngineForCar`, uses `schema-type-mapping.json`.
+  - `Main.java`: Runs validation/mapping generation with `"validate"` or `getEngineForCar` by default.
+  - `AppTest.java`: Tests `getEngineForCar` with JUnit.
+
+## Workflow
+
+1. **Create Schemas and Instances**:
+   - Add/edit JSON schemas in `src/main/resources/schemas/engines/` and `src/main/resources/schemas/cars/`.
+   - Add/edit JSON instances in `src/main/resources/instances/engines/` and `src/main/resources/instances/cars/`.
+2. **Validate Instances**:
+   ```bash
+   mvn compile
+   java -cp target/classes com.example.Main validate
+   ```
+   - Generates `src/main/resources/generated/relationships.json`.
+   - Outputs: `Generated relationships file: ...`
+3. **Generate Classes**:
+   ```bash
+   mvn generate-sources
+   ```
+   - Generates classes in `src/main/java/com/example/engine/generated/engines/` and `src/main/java/com/example/engine/generated/cars/`.
+4. **Generate Schema Type Mapping**:
+   ```bash
+   java -cp target/classes com.example.Main validate
+   ```
+   - Generates `src/main/resources/generated/schema-type-mapping.json` (requires classes to be generated first).
+5. **Compile and Test**:
+   ```bash
+   mvn compile
+   mvn package
+   mvn test
+   ```
+   - Compiles classes and runs `AppTest.java`.
+6. **Run Default Behavior**:
+   ```bash
+   java -cp target/classes com.example.Main
+   ```
+   - Calls `getEngineForCar` for sample car UUIDs, outputs engine details.
+7. **Transform POC**:
+   ```bash
+   python transform_poc.py --source-dir car-engine-json --target-dir project-commodity-json engine=project car=commodity gas=project1 electric=project2 hybrid=project3 sedan=commodity1 suv=commodity2
+   ```
+   - Transforms to `project-commodity-json`, updating class names (e.g., `EngineGas` → `ProjectProject1`), packages (e.g., `engines` → `projects`), and artifact ID.
+   - Run transformed POC:
+     ```bash
+     cd project-commodity-json
+     mvn compile
+     java -cp target/classes com.example.Main validate
+     mvn generate-sources
+     mvn compile
+     mvn package
+     mvn test
+     ```
+
+## Setup
+
+1. **Create Project**:
+   ```bash
+   mvn archetype:generate -DgroupId=com.example -DartifactId=car-engine-json -Dversion=1.0-SNAPSHOT -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+   ```
+2. **Navigate**:
+   ```bash
+   cd car-engine-json
+   ```
+3. **Replace `pom.xml`**:
+   - Use the provided `pom.xml` with dependencies and plugins.
+4. **Create Directories**:
+   ```bash
+   mkdir -p src/main/resources/schemas/engines
+   mkdir -p src/main/resources/schemas/cars
+   mkdir -p src/main/resources/instances/engines
+   mkdir -p src/main/resources/instances/cars
+   mkdir -p src/main/resources/generated
+   mkdir -p src/main/java/com/example/engine/generated/engines
+   mkdir -p src/main/java/com/example/engine/generated/cars
+   mkdir -p src/test/java/com/example
+   ```
+5. **Copy Files**:
+   - Copy JSON schemas, instances, `EngineValidation.java`, `EngineService.java`, `Main.java`, `AppTest.java`, and `transform_poc.py` to their respective directories.
+
+## Dependencies
+
+- **Maven Dependencies**:
+  - `com.fasterxml.jackson.core:jackson-databind:2.17.2`: JSON processing for validation and service.
+  - `io.github.classgraph:classgraph:4.8.174`: Resource scanning for loading JSON instances in `EngineService`.
+  - `com.networknt:json-schema-validator:1.5.2`: JSON schema validation in `EngineValidation`.
+  - `junit:junit:4.13.2` (test scope): For running `AppTest.java`.
+- **Maven Plugins**:
+  - `maven-compiler-plugin:3.13.0`: Compiles Java 21 code.
+  - `jsonschema2pojo-maven-plugin:1.2.1`: Generates non-JavaBean classes in `generate-sources` phase.
+  - `build-helper-maven-plugin:3.6.0`: Adds generated sources to the build path.
+
+## Notes
+
+- **Class Naming**: Uses `jsonschema2pojo` convention (`EngineGas`, `CarSedan`) in `com.example.engine.generated.engines` and `com.example.engine.generated.cars`.
+- **Thread Safety**: `EngineService` uses `ConcurrentHashMap` for thread-safe access to JSON data and mappings.
+- **Schema Type Mapping**: `schema-type-mapping.json` is generated programmatically after `mvn generate-sources`, eliminating manual maintenance.
+- **Transformation**: `transform_poc.py` updates class names (e.g., `engines.EngineGas` → `projects.ProjectProject1`), packages, and JSON files.
+- **Workflow Order**: Run `java com.example.Main validate` before `mvn generate-sources` for `relationships.json`, and again after for `schema-type-mapping.json`.
