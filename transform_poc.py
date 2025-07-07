@@ -104,4 +104,4 @@ def main():
     print(f"Transformed POC from {args.source_dir} to {args.target_dir}")
 
 if __name__ == "__main__":
-    main(
+    main()
