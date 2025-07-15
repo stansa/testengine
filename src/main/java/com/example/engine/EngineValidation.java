@@ -1,4 +1,4 @@
-package com.example.engine;
+ package com.example.engine;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,9 +43,8 @@ public class EngineValidation {
 
                                 // Validate against schema
                                 Path schemaPath = schemasDir.toPath().resolve(subDir).resolve(schemaType + ".json");
-                                //Path schemaPath = schemasDir.toPath().resolve(subDir).resolve(fileName);
                                 if (!Files.exists(schemaPath)) {
-                                    throw new Exception("Schema NOT found: " + schemaPath + " for instance " + fileName);
+                                    throw new Exception("Schema not found for: " + schemaType + " at " + fileName);
                                 }
                                 JsonSchema schema = factory.getSchema(Files.newInputStream(schemaPath));
                                 Set<ValidationMessage> errors = schema.validate(jsonNode);
@@ -58,18 +57,17 @@ public class EngineValidation {
                                 // Store schema type for relationship validation
                                 uuidToSchemaType.put(uuid, schemaType);
 
-                                // Collect relationships for Engine instances
-                                if (schemaType.startsWith("engine-")) {
-                                    JsonNode carUuidsNode = jsonNode.get("carUuids");
-                                    if (carUuidsNode != null && carUuidsNode.isArray()) {
-                                        carUuidsNode.forEach(node -> {
-                                            String carUuid = node.asText();
-                                            carUuidToEngineUuids.computeIfAbsent(carUuid, k -> new HashSet<>()).add(uuid);
+                                // Collect relationships from Car instances only (updated requirement)
+                                if (subDir.equals("cars")) {
+                                    JsonNode engineRelationshipsNode = jsonNode.get("engineRelationships");
+                                    if (engineRelationshipsNode != null && engineRelationshipsNode.isArray()) {
+                                        engineRelationshipsNode.forEach(node -> {
+                                            String engineUuid = node.get("engineUuid").asText();
+                                            carUuidToEngineUuids.computeIfAbsent(uuid, k -> new HashSet<>()).add(engineUuid);
                                         });
                                     }
                                 }
                             } catch (Exception e) {
-                                e.printStackTrace();
                                 throw new RuntimeException("Failed to process: " + path, e);
                             }
                         });

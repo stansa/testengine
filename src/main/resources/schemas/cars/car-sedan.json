@@ -1,26 +1,57 @@
-
 {
-"$schema": "http://json-schema.org/draft-07/schema#",
-"type": "object",
-"properties": {
-"name": { "type": "string" },
-"uuid": { "type": "string", "format": "uuid" },
-"model": { "type": "string" },
-"maxSpeed": {
-"type": "integer",
-"minimum": 100,
-"maximum": 200
-},
-"features": {
-"type": "array",
-"items": { "type": "string" },
-"uniqueItems": true
-},
-"engineUuids": {
-"type": "array",
-"items": { "type": "string" },
-"uniqueItems": true
-}
-},
-"required": ["name", "uuid", "model", "engineUuids"]
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "uuid": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "maxSpeed": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 200
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "engineRelationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "engineUuid": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "engineUuid",
+          "validFrom"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "name",
+    "uuid",
+    "model",
+    "engineRelationships"
+  ]
 }

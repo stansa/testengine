@@ -1,4 +1,5 @@
-package com.example.engine;
+
+        package com.example.engine;
 
 import com.example.engine.generated.engines.EngineGas;
 import com.example.engine.generated.engines.EngineElectric;
@@ -10,7 +11,6 @@ import io.github.classgraph.ScanResult;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,17 +115,17 @@ public class EngineService {
             switch (schemaType) {
                 case "engine-gas":
                     if (targetClass.equals(EngineGas.class)) {
-                        return (Optional<T>) Optional.of(targetClass.cast(objectMapper.readValue(json, EngineGas.class)));
+                        return Optional.of(targetClass.cast(objectMapper.readValue(json, EngineGas.class)));
                     }
                     break;
                 case "engine-electric":
                     if (targetClass.equals(EngineElectric.class)) {
-                        return (Optional<T>) Optional.of(targetClass.cast(objectMapper.readValue(json, EngineElectric.class)));
+                        return Optional.of(targetClass.cast(objectMapper.readValue(json, EngineElectric.class)));
                     }
                     break;
                 case "engine-hybrid":
                     if (targetClass.equals(EngineHybrid.class)) {
-                        return (Optional<T>) Optional.of(targetClass.cast(objectMapper.readValue(json, EngineHybrid.class)));
+                        return Optional.of(targetClass.cast(objectMapper.readValue(json, EngineHybrid.class)));
                     }
                     break;
                 default:

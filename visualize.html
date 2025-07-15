@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Car Engine Visualization</title>
+    <script src="src/main/resources/lib/d3.min.js"></script>
+    <style>
+        body { font-family: Arial; }
+        svg { border: 1px solid black; }
+        .node circle { fill: #fff; stroke: steelblue; stroke-width: 3px; }
+        .node text { font: 12px sans-serif; }
+        .link { fill: none; stroke: #ccc; stroke-width: 2px; }
+    </style>
+</head>
+<body>
+<h1>Car Engine Visualization</h1>
+<input type="text" id="search" placeholder="Search...">
+<svg width="800" height="600"></svg>
+<script>
+    d3.json("visuals/d3-data.json").then(function(data) {
+        // Example for relationships tree
+        const treeData = { name: "Root", children: [] };
+        for (const [car, engines] of Object.entries(data.relationships)) {
+            const carNode = { name: car, children: engines.map(e => ({ name: e })) };
+            treeData.children.push(carNode);
+        }
+
+        const svg = d3.select("svg"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height"),
+            g = svg.append("g").attr("transform", "translate(40,0)");
+
+        const tree = d3.tree().size([height, width - 160]);
+        const root = d3.hierarchy(treeData);
+        const links = g.selectAll(".link")
+            .data(tree(root).links())
+            .enter().append("path")
+            .attr("class", "link")
+            .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+
+        const nodes = g.selectAll(".node")
+            .data(root.descendants())
+            .enter().append("g")
+            .attr("class", "node")
+            .attr("transform", d => `translate(${d.y},${d.x})`);
+
+        nodes.append("circle").attr("r", 5);
+        nodes.append("text")
+            .attr("dy", 3)
+            .attr("x", d => d.children ? -8 : 8)
+            .attr("text-anchor", d => d.children ? "end" : "start")
+            .text(d => d.data.name);
+
+        // Search
+        d3.select("#search").on("input", function() {
+            const term = this.value.toLowerCase();
+            nodes.style("opacity", d => d.data.name.toLowerCase().includes(term) ? 1 : 0.3);
+            links.style("opacity", 0.3);
+        });
+    });
+</script>
+</body>
+</html>
