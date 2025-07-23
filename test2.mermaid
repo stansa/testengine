@@ -1,0 +1,69 @@
+graph TD
+%% Shared Elements
+    subgraph SystemA_Versions [SystemA: Versions]
+        SysA_v1[SystemA v1.0\nDeployed: t0\nContains: Prod v1, Proj X]
+        SysA_v2[SystemA v1.1\nDeployed: t1\nNew/Modified: Prod versions, Proj Y]
+    end
+
+subgraph SystemA_Projects [SystemA: Projects (Immutable)]
+ProjX[Project X\nCreated: t0]
+ProjY[Project Y\nCreated: t1]
+end
+
+subgraph SystemB_Versions [SystemB: Versions]
+SysB_v1[SystemB v1.0\nDeployed: t0\nDepends on SysA v1.0]
+SysB_v2[SystemB v2.0\nDeployed: t1 (Upgrade)\nDepends on SysA v1.1]
+end
+
+subgraph SystemB_Accounts [SystemB: Accounts]
+AccA[Account A\nProvisioned: t0\nAssociated: ProdV1\nAccess: X]
+AccA_updated[Account A (Post-Upgrade)\nAssociated: Updated ProdV\nAccess: X + Y]
+end
+
+%% Dependencies and Containments (Shared)
+SysA_v1 --> ProjX
+SysB_v1 --> SysA_v1
+SysA_v2 --> ProjY
+SysB_v2 --> SysA_v2
+AccA -. Propagates .-> AccA_updated
+SysB_v1 -. Upgrade .-> SysB_v2
+
+%% Scenario 1: Create New ProductVersion
+subgraph SystemA_Scenario1 [SystemA: Scenario 1 - Create New ProductVersion]
+Prod1[Product P]
+ProdV1_1[ProductVersion v1\nAssociated: Proj X]
+ProdV2[ProductVersion v2\n(New)\nAssociated: Proj X + Proj Y]
+Prod1 --> ProdV1_1
+Prod1 --> ProdV2
+ProdV1_1 --> ProjX
+ProdV2 --> ProjX
+ProdV2 --> ProjY
+ProdV1_1 -. Leads To New .-> ProdV2
+AccA --> ProdV1_1
+AccA_updated --> ProdV2
+SysA_v1 --> Prod1
+SysA_v2 --> Prod1
+end
+
+%% Scenario 2: Modify Existing ProductVersion
+subgraph SystemA_Scenario2 [SystemA: Scenario 2 - Modify Existing ProductVersion]
+Prod2[Product P]
+ProdV1_2[ProductVersion v1\n(Pre-Upgrade)\nAssociated: Proj X]
+ProdV1_mod[ProductVersion v1\n(Modified)\nAssociated: Proj X + Proj Y]
+Prod2 --> ProdV1_2
+ProdV1_2 --> ProjX
+ProdV1_mod --> ProjX
+ProdV1_mod --> ProjY
+ProdV1_2 -. Modified .-> ProdV1_mod
+AccA --> ProdV1_2
+AccA_updated --> ProdV1_mod
+SysA_v1 --> Prod2
+SysA_v2 --> Prod2
+end
+
+classDef new fill:#90ee90,stroke:#333
+classDef modified fill:#ffd700,stroke:#333
+classDef impact fill:#ff8c00,stroke:#333
+class ProjY new
+class ProdV2,ProdV1_mod modified
+class AccA_updated impact

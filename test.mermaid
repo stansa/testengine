@@ -1,0 +1,45 @@
+
+erDiagram
+%% Entities and Relationships for Static View
+PROJECT {
+string id PK
+string name
+datetime createdAt
+%% Managed by SystemA
+%% Note: Immutable once created
+}
+PRODUCT {
+string id PK
+string name
+%% Managed by SystemA
+}
+PRODUCT_VERSION {
+string version PK
+datetime modifiedAt
+%% Managed by SystemA
+%% Note: Mutable, can add associations
+}
+SYSTEM_A_VERSION {
+string version PK
+datetime deployedAt
+%% Contains Products and Projects
+}
+SYSTEM_B_VERSION {
+string version PK
+datetime deployedAt
+%% Depends on SystemA JAR
+}
+ACCOUNT {
+string id PK
+string name
+%% Managed by SystemB
+%% Associated with ProductVersions post-provisioning
+}
+
+%% Relationships
+SYSTEM_A_VERSION ||--o{ PRODUCT : "contains"
+SYSTEM_A_VERSION ||--o{ PROJECT : "contains"
+PRODUCT ||--o{ PRODUCT_VERSION : "has"
+PRODUCT_VERSION }o--o{ PROJECT : "associated with"
+SYSTEM_B_VERSION ||--|| SYSTEM_A_VERSION : "depends on"
+ACCOUNT }o--o{ PRODUCT_VERSION : "associated with"
