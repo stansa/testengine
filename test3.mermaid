@@ -1,0 +1,37 @@
+graph TD
+%% SystemA Context: Projects and Products with Dummy Data
+subgraph SystemA [SystemA: Configuration Entities (Immutable Projects, Mutable Products)]
+Proj1[Project X\nID: proj001\nName: Research Initiative\nCreated: 2025-01-01\n(Immutable)]
+Proj2[Project Y\nID: proj002\nName: Development Sprint\nCreated: 2025-03-15\n(Immutable)]
+
+Prod[Product P\nID: prod001\nName: Core Module]
+
+ProdV1[ProductVersion v1.0\nModified: 2025-02-10\nAssociations: Proj X]
+ProdV2[ProductVersion v2.0\nModified: 2025-04-20\nAssociations: Proj X + Proj Y\n(Mutable, Updated)]
+
+Prod --> ProdV1
+Prod --> ProdV2
+ProdV1 --> Proj1
+ProdV2 --> Proj1
+ProdV2 --> Proj2
+end
+
+%% SystemB Context: Accounts with Dummy Data, Associated to SystemA Products
+subgraph SystemB [SystemB: Account Entities]
+Acc1[Account A\nID: acc001\nName: User Group Alpha\nProvisioned: 2025-02-01\nAssociated: Product P v1.0\nAccess: Proj X]
+Acc2[Account B\nID: acc002\nName: User Group Beta\nProvisioned: 2025-05-01\nAssociated: Product P v2.0\nAccess: Proj X + Proj Y\n(Post-Upgrade Propagation)]
+end
+
+%% Cross-System Associations
+Acc1 --> ProdV1
+Acc2 --> ProdV2
+
+%% Styling for Clarity
+classDef systemA fill:#add8e6,stroke:#333
+classDef systemB fill:#90ee90,stroke:#333
+classDef project fill:#ffd700,stroke:#333
+classDef product fill:#ff8c00,stroke:#333
+classDef account fill:#9370db,stroke:#333
+class Proj1,Proj2 project
+class Prod,ProdV1,ProdV2 product
+class Acc1,Acc2 account
