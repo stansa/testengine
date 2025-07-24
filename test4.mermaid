@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant SysA as SystemA
+    participant SysB as SystemB
+    participant Acc as Account
+
+    Note over SysA: Initial State (t0)<br>Project X (ID: proj001, Immutable, Created: 2025-01-01)<br>Product P (ID: prod001)<br>ProductVersion v1 (Associated: Proj X, Modified: 2025-02-10)
+
+    SysB->>SysA: Deploy SysB v1.0 (Depends on SysA v1.0)
+    Acc->>SysB: Provision Account A (ID: acc001, Name: Alpha Team, Provisioned: 2025-02-01)
+    SysB->>SysA: Associate Account A with ProductVersion v1<br>Access: Proj X
+
+    alt Scenario 1: Create New ProductVersion
+        SysA->>SysA: Deploy SysA v1.1 (t1)<br>Create ProductVersion v2 (Modified: 2025-04-20, Associated: Proj X + Proj Y)<br>Proj Y (ID: proj002, Immutable, Created: 2025-03-15)
+        SysB->>SysA: Upgrade SysB to v2.0 (Depends on SysA v1.1)
+        SysB->>Acc: Propagate to Account A<br>Now Associated: ProductVersion v2<br>Access: Proj X + Proj Y
+    else Scenario 2: Modify Existing ProductVersion
+        SysA->>SysA: Deploy SysA v1.1 (t1)<br>Modify ProductVersion v1 (Add Assoc: Proj Y)<br>Proj Y (ID: proj002, Immutable, Created: 2025-03-15)
+        SysB->>SysA: Upgrade SysB to v2.0 (Depends on SysA v1.1)
+        SysB->>Acc: Propagate to Account A<br>Now Associated: Updated ProductVersion v1<br>Access: Proj X + Proj Y
+    end
+
+    Note over SysA,Acc: Post-Upgrade State<br>Accounts gain access to new Projects via Product associations
