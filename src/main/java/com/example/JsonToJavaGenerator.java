@@ -1,15 +1,20 @@
 package com.example;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Scanner;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ScanResult;
 
 public class JsonToJavaGenerator {
 
@@ -20,27 +25,17 @@ public class JsonToJavaGenerator {
         Path targetDir = args.length > 0 ? Paths.get(args[0]) : Paths.get("src/main/java/com/example/generated/json");
         Files.createDirectories(targetDir);
 
-        Path sourceDir = Paths.get("src/main/resources"); // Local directory for schemas and instances
-        List<Path> jsonFiles = new ArrayList<>();
-
-        // Walk through schemas and instances subdirectories
-        Stream.of("schemas", "instances").forEach(subDir -> {
-            Path dir = sourceDir.resolve(subDir);
-            if (Files.exists(dir)) {
-                try (Stream<Path> paths = Files.walk(dir)) {
-                    paths.filter(Files::isRegularFile)
-                            .filter(path -> path.toString().endsWith(".json"))
-                            .forEach(jsonFiles::add);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
+        List<String> jsonPaths = new ArrayList<>();
+        try (ScanResult scanResult = new ClassGraph().acceptPaths("/schemas", "/instances").enableAllInfo().scan()) {
+            scanResult.getResourcesWithExtension("json").forEach(resource -> {
+                jsonPaths.add(resource.getPath());
+            });
+        }
 
         List<String> generatedClasses = new ArrayList<>();
 
-        for (Path jsonFile : jsonFiles) {
-            String className = generateJavaClass(jsonFile, targetDir, sourceDir);
+        for (String jsonPath : jsonPaths) {
+            String className = generateJavaClass(jsonPath, targetDir);
             if (className != null) {
                 generatedClasses.add(className);
             }
@@ -48,50 +43,38 @@ public class JsonToJavaGenerator {
 
         generateAggregator(targetDir, generatedClasses);
 
-        System.out.println("Generated " + jsonFiles.size() + " Java classes with embedded JSON in " + targetDir + ". Aggregator generated.");
+        System.out.println("Generated " + jsonPaths.size() + " Java classes with embedded JSON in " + targetDir + ". Aggregator generated.");
     }
 
-    private static String generateJavaClass(Path jsonFile, Path targetDir, Path sourceDir) throws Exception {
-        // Sanitize class name from relative path
-        Path relativePath = sourceDir.relativize(jsonFile);
-        String className = relativePath.toString().replaceAll("[/.-]", "_").replaceAll("^_", "");
+    private static String generateJavaClass(String jsonPath, Path targetDir) throws Exception {
+        // Sanitize class name from path
+        String className = jsonPath.replaceAll("[/.-]", "_").replaceAll("^_", "");
         className = Character.toUpperCase(className.charAt(0)) + className.substring(1);
 
         // Read JSON content
-        String jsonContent = Files.readString(jsonFile, StandardCharsets.UTF_8);
-        jsonContent = jsonContent.replace("\"", "\\\"").replace("\n", "\\n");
-
-        // Generate Java code
-        StringBuilder javaCode = new StringBuilder();
-        javaCode.append("package ").append(TARGET_PACKAGE).append(";\n\n");
-        javaCode.append("public class ").append(className).append(" {\n");
-        javaCode.append("    public static final String JSON = \"").append(jsonContent).append("\";\n");
-
-        // If this is a car instance, add associated engines
-        if (relativePath.toString().contains("/instances/cars/")) {
-            JsonNode instance = mapper.readTree(Files.readString(jsonFile));
-            JsonNode rels = instance.get("engineRelationships");
-            if (rels != null && rels.isArray()) {
-                for (JsonNode rel : rels) {
-                    String engineUuid = rel.get("engineUuid").asText();
-                    Path enginePath = sourceDir.resolve("instances/engines/" + engineUuid.replace(":", "-") + ".json");
-                    if (Files.exists(enginePath)) {
-                        String engineJson = Files.readString(enginePath, StandardCharsets.UTF_8);
-                        engineJson = engineJson.replace("\"", "\\\"").replace("\n", "\\n");
-                        String engineConstantName = "ENGINE_" + engineUuid.toUpperCase().replace(":", "_").replace("-", "_") + "_JSON";
-                        javaCode.append("    public static final String ").append(engineConstantName).append(" = \"").append(engineJson).append("\";\n");
-                    }
-                }
+        try (InputStream is = JsonToJavaGenerator.class.getClassLoader().getResourceAsStream(jsonPath)) {
+            if (is == null) {
+                throw new IOException("Resource not found: " + jsonPath);
             }
+            String jsonContent = new Scanner(is, StandardCharsets.UTF_8.name()).useDelimiter("\\A").next();
+            jsonContent = jsonContent.replace("\"", "\\\"").replace("\n", "\\n");
+
+            // Generate Java code
+            StringBuilder javaCode = new StringBuilder();
+            javaCode.append("package ").append(TARGET_PACKAGE).append(";\n\n");
+            javaCode.append("public class ").append(className).append(" {\n");
+            javaCode.append("    public static final String JSON = \"").append(jsonContent).append("\";\n");
+            javaCode.append("}\n");
+
+            // Write to file
+            Path javaFile = targetDir.resolve(className + ".java");
+            Files.writeString(javaFile, javaCode.toString());
+            System.out.println("Generated: " + javaFile);
+            return className;
+        } catch (IOException e) {
+            System.err.println("Failed to generate class for " + jsonPath + ": " + e.getMessage());
+            return null;
         }
-
-        javaCode.append("}\n");
-
-        // Write to file
-        Path javaFile = targetDir.resolve(className + ".java");
-        Files.writeString(javaFile, javaCode.toString());
-        System.out.println("Generated: " + javaFile);
-        return className;
     }
 
     private static void generateAggregator(Path targetDir, List<String> generatedClasses) throws Exception {
