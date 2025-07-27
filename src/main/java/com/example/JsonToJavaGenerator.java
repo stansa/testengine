@@ -72,45 +72,35 @@ public class JsonToJavaGenerator {
                 } else if (value.isBoolean()) {
                     fieldsCode.append("    public static final boolean ").append(fieldName).append(" = ").append(value.asBoolean()).append(";\n");
                 } else if (value.isArray()) {
-                    if (value.size() == 0) {
-                        fieldsCode.append("    public static final Object[] ").append(fieldName).append(" = new Object[0];\n");
-                    } else {
-                        JsonNode first = value.get(0);
-                        if (first.isTextual()) {
-                            StringBuilder arrayValue = new StringBuilder();
-                            arrayValue.append("{ ");
-                            for (JsonNode elem : value) {
-                                arrayValue.append("\"").append(elem.asText().replace("\"", "\\\"")).append("\", ");
-                            }
-                            if (arrayValue.length() > 2) {
-                                arrayValue.setLength(arrayValue.length() - 2);
-                            }
-                            arrayValue.append(" }");
-                            fieldsCode.append("    public static final String[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
-                        } else if (first.isObject()) {
-                            int index = 0;
-                            for (JsonNode obj : value) {
-                                String objValue = obj.toString().replace("\"", "\\\"").replace("\n", "\\n");
-                                fieldsCode.append("    public static final String ").append(fieldName).append("_").append(index).append(" = \"").append(objValue).append("\";\n");
-                                index++;
-                            }
+                    String arrayType = getArrayType(value);
+                    StringBuilder arrayValue = new StringBuilder();
+                    arrayValue.append("{ ");
+                    int index = 0;
+                    for (JsonNode elem : value) {
+                        if (elem.isObject()) {
+                            // Generate sub-class for object in array
+                            String subClassName = fieldName + "_" + index;
+                            String subClassCode = generateSubClassCode(subClassName, elem);
+                            fieldsCode.append(subClassCode);
+                            arrayValue.append(subClassName).append(".class, ");
+                        } else if (elem.isTextual()) {
+                            arrayValue.append("\"").append(elem.asText().replace("\"", "\\\"")).append("\", ");
                         } else {
-                            String arrayType = first.isInt() ? "int" : first.isDouble() ? "double" : "boolean";
-                            StringBuilder arrayValue = new StringBuilder();
-                            arrayValue.append("{ ");
-                            for (JsonNode elem : value) {
-                                arrayValue.append(elem.asText()).append(", ");
-                            }
-                            if (arrayValue.length() > 2) {
-                                arrayValue.setLength(arrayValue.length() - 2);
-                            }
-                            arrayValue.append(" }");
-                            fieldsCode.append("    public static final ").append(arrayType).append("[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
+                            arrayValue.append(elem.asText()).append(", ");
                         }
+                        index++;
                     }
+                    if (arrayValue.length() > 2) {
+                        arrayValue.setLength(arrayValue.length() - 2);
+                    }
+                    arrayValue.append(" }");
+                    fieldsCode.append("    public static final ").append(arrayType).append("[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
                 } else if (value.isObject()) {
-                    String objValue = value.toString().replace("\"", "\\\"").replace("\n", "\\n");
-                    fieldsCode.append("    public static final String ").append(fieldName).append(" = \"").append(objValue).append("\";\n");
+                    // Generate sub-class for object field
+                    String subClassName = fieldName;
+                    String subClassCode = generateSubClassCode(subClassName, value);
+                    fieldsCode.append(subClassCode);
+                    fieldsCode.append("    public static final Class<?> ").append(fieldName).append(" = ").append(subClassName).append(".class;\n");
                 }
             });
 
@@ -133,6 +123,44 @@ public class JsonToJavaGenerator {
         }
     }
 
+    private static String generateSubClassCode(String subClassName, JsonNode objectNode) {
+        StringBuilder subCode = new StringBuilder();
+        subCode.append("    public static class ").append(subClassName).append(" {\n");
+        objectNode.fields().forEachRemaining(field -> {
+            String fieldName = field.getKey().toUpperCase().replace("-", "_");
+            JsonNode value = field.getValue();
+            if (value.isTextual()) {
+                String strValue = value.asText().replace("\"", "\\\"");
+                subCode.append("        public static final String ").append(fieldName).append(" = \"").append(strValue).append("\";\n");
+            } else if (value.isNumber()) {
+                subCode.append("        public static final ").append(value.isInt() ? "int" : "double").append(" ").append(fieldName).append(" = ").append(value.asText()).append(";\n");
+            } else if (value.isBoolean()) {
+                subCode.append("        public static final boolean ").append(fieldName).append(" = ").append(value.asBoolean()).append(";\n");
+            } else if (value.isArray()) {
+                String arrayType = getArrayType(value);
+                StringBuilder arrayValue = new StringBuilder();
+                arrayValue.append("{ ");
+                for (JsonNode elem : value) {
+                    if (elem.isTextual()) {
+                        arrayValue.append("\"").append(elem.asText().replace("\"", "\\\"")).append("\", ");
+                    } else {
+                        arrayValue.append(elem.asText()).append(", ");
+                    }
+                }
+                if (arrayValue.length() > 2) {
+                    arrayValue.setLength(arrayValue.length() - 2);
+                }
+                arrayValue.append(" }");
+                subCode.append("        public static final ").append(arrayType).append("[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
+            } else if (value.isObject()) {
+                String objValue = value.toString().replace("\"", "\\\"").replace("\n", "\\n");
+                subCode.append("        public static final String ").append(fieldName).append(" = \"").append(objValue).append("\";\n");
+            }
+        });
+        subCode.append("    }\n");
+        return subCode.toString();
+    }
+
     private static String getArrayType(JsonNode arrayNode) {
         if (arrayNode.size() > 0) {
             JsonNode first = arrayNode.get(0);
@@ -143,5 +171,56 @@ public class JsonToJavaGenerator {
         }
         return "Object";
     }
-}
 
+    private static void generateAggregator(Path targetDir, List<String> generatedClasses) throws Exception {
+        StringBuilder javaCode = new StringBuilder();
+        javaCode.append("package ").append(TARGET_PACKAGE).append(";\n\n");
+        javaCode.append("import com.fasterxml.jackson.databind.JsonNode;\n");
+        javaCode.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
+        javaCode.append("import java.util.HashMap;\n");
+        javaCode.append("import java.util.HashSet;\n");
+        javaCode.append("import java.util.Map;\n");
+        javaCode.append("import java.util.Set;\n");
+        javaCode.append("import java.util.stream.StreamSupport;\n\n");
+        javaCode.append("public class Aggregator {\n");
+        javaCode.append("    public static final Map<String, JsonNode> UUID_TO_INSTANCE = new HashMap<>();\n");
+        javaCode.append("    public static final Map<String, String> UUID_TO_SCHEMA_TYPE = new HashMap<>();\n");
+        javaCode.append("    public static final Map<String, Set<String>> CAR_UUID_TO_ENGINE_UUIDS = new HashMap<>();\n");
+        javaCode.append("    private static final ObjectMapper mapper = new ObjectMapper();\n\n");
+        javaCode.append("    static {\n");
+
+        // Load all generated classes
+        for (String className : generatedClasses) {
+            javaCode.append("        loadInstance(").append(className).append(".JSON);\n");
+        }
+
+        javaCode.append("    }\n\n");
+        javaCode.append("    private static void loadInstance(String json) {\n");
+        javaCode.append("        try {\n");
+        javaCode.append("            JsonNode instance = mapper.readTree(json);\n");
+        javaCode.append("            String uuid = instance.path(\"uuid\").asText();\n");
+        javaCode.append("            if (uuid.isEmpty()) return;\n");
+        javaCode.append("            UUID_TO_INSTANCE.put(uuid, instance);\n");
+        javaCode.append("            String schemaType = uuid.split(\":\")[0];\n");
+        javaCode.append("            UUID_TO_SCHEMA_TYPE.put(uuid, schemaType);\n");
+        javaCode.append("            if (schemaType.equals(\"car\")) {\n");
+        javaCode.append("                JsonNode rels = instance.path(\"engineRelationships\");\n");
+        javaCode.append("                Set<String> engineUuids = new HashSet<>();\n");
+        javaCode.append("                if (rels.isArray()) {\n");
+        javaCode.append("                    StreamSupport.stream(rels.spliterator(), false).forEach(rel -> {\n");
+        javaCode.append("                        engineUuids.add(rel.path(\"engineUuid\").asText());\n");
+        javaCode.append("                    });\n");
+        javaCode.append("                }\n");
+        javaCode.append("                CAR_UUID_TO_ENGINE_UUIDS.put(uuid, engineUuids);\n");
+        javaCode.append("            }\n");
+        javaCode.append("        } catch (Exception e) {\n");
+        javaCode.append("            e.printStackTrace();\n");
+        javaCode.append("        }\n");
+        javaCode.append("    }\n");
+        javaCode.append("}\n");
+
+        Path aggregatorFile = targetDir.resolve("Aggregator.java");
+        Files.writeString(aggregatorFile, javaCode.toString());
+        System.out.println("Generated Aggregator: " + aggregatorFile);
+    }
+}
