@@ -1,6 +1,5 @@
 package com.example;
 
-```java
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -8,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,15 +25,9 @@ public class JsonToJavaGenerator {
         Files.createDirectories(targetDir);
 
         List<String> jsonPaths = new ArrayList<>();
-        String propertiesPath = null;
-        try (ScanResult scanResult = new ClassGraph().acceptPaths("/schemas", "/instances", "/version").enableAllInfo().scan()) {
+        try (ScanResult scanResult = new ClassGraph().acceptPaths("/schemas", "/instances").enableAllInfo().scan()) {
             scanResult.getResourcesWithExtension("json").forEach(resource -> {
                 jsonPaths.add(resource.getPath());
-            });
-            scanResult.getResourcesWithExtension("properties").forEach(resource -> {
-                if (resource.getPath().endsWith("version.properties")) {
-                    propertiesPath = resource.getPath();
-                }
             });
         }
 
@@ -44,11 +38,6 @@ public class JsonToJavaGenerator {
             if (className != null) {
                 generatedClasses.add(className);
             }
-        }
-
-        if (propertiesPath != null) {
-            generatePropertiesClass(propertiesPath, targetDir);
-            generatedClasses.add("VersionProperties");
         }
 
         generateAggregator(targetDir, generatedClasses);
@@ -83,21 +72,42 @@ public class JsonToJavaGenerator {
                 } else if (value.isBoolean()) {
                     fieldsCode.append("    public static final boolean ").append(fieldName).append(" = ").append(value.asBoolean()).append(";\n");
                 } else if (value.isArray()) {
-                    String arrayType = getArrayType(value);
-                    StringBuilder arrayValue = new StringBuilder();
-                    arrayValue.append("{ ");
-                    for (JsonNode elem : value) {
-                        if (elem.isTextual()) {
-                            arrayValue.append("\"").append(elem.asText().replace("\"", "\\\"")).append("\", ");
+                    if (value.size() == 0) {
+                        fieldsCode.append("    public static final Object[] ").append(fieldName).append(" = new Object[0];\n");
+                    } else {
+                        JsonNode first = value.get(0);
+                        if (first.isTextual()) {
+                            StringBuilder arrayValue = new StringBuilder();
+                            arrayValue.append("{ ");
+                            for (JsonNode elem : value) {
+                                arrayValue.append("\"").append(elem.asText().replace("\"", "\\\"")).append("\", ");
+                            }
+                            if (arrayValue.length() > 2) {
+                                arrayValue.setLength(arrayValue.length() - 2);
+                            }
+                            arrayValue.append(" }");
+                            fieldsCode.append("    public static final String[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
+                        } else if (first.isObject()) {
+                            int index = 0;
+                            for (JsonNode obj : value) {
+                                String objValue = obj.toString().replace("\"", "\\\"").replace("\n", "\\n");
+                                fieldsCode.append("    public static final String ").append(fieldName).append("_").append(index).append(" = \"").append(objValue).append("\";\n");
+                                index++;
+                            }
                         } else {
-                            arrayValue.append(elem.asText()).append(", ");
+                            String arrayType = first.isInt() ? "int" : first.isDouble() ? "double" : "boolean";
+                            StringBuilder arrayValue = new StringBuilder();
+                            arrayValue.append("{ ");
+                            for (JsonNode elem : value) {
+                                arrayValue.append(elem.asText()).append(", ");
+                            }
+                            if (arrayValue.length() > 2) {
+                                arrayValue.setLength(arrayValue.length() - 2);
+                            }
+                            arrayValue.append(" }");
+                            fieldsCode.append("    public static final ").append(arrayType).append("[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
                         }
                     }
-                    if (arrayValue.length() > 2) {
-                        arrayValue.setLength(arrayValue.length() - 2);
-                    }
-                    arrayValue.append(" }");
-                    fieldsCode.append("    public static final ").append(arrayType).append("[] ").append(fieldName).append(" = ").append(arrayValue).append(";\n");
                 } else if (value.isObject()) {
                     String objValue = value.toString().replace("\"", "\\\"").replace("\n", "\\n");
                     fieldsCode.append("    public static final String ").append(fieldName).append(" = \"").append(objValue).append("\";\n");
@@ -133,98 +143,5 @@ public class JsonToJavaGenerator {
         }
         return "Object";
     }
-
-    private static void generatePropertiesClass(String propertiesPath, Path targetDir) throws Exception {
-        String className = "VersionProperties";
-
-        // Read properties content
-        try (InputStream is = JsonToJavaGenerator.class.getClassLoader().getResourceAsStream(propertiesPath)) {
-            if (is == null) {
-                throw new IOException("Resource not found: " + propertiesPath);
-            }
-            String propertiesContent = new Scanner(is, StandardCharsets.UTF_8.name()).useDelimiter("\\A").next();
-            propertiesContent = propertiesContent.replace("\"", "\\\"").replace("\n", "\\n");
-
-            // Parse properties for individual fields
-            StringBuilder fieldsCode = new StringBuilder();
-            String[] lines = propertiesContent.replace("\\n", "\n").split("\n");
-            for (String line : lines) {
-                if (line.contains("=")) {
-                    String[] parts = line.split("=", 2);
-                    String fieldName = parts[0].toUpperCase().replace(".", "_");
-                    String fieldValue = parts[1].replace("\"", "\\\"");
-                    fieldsCode.append("    public static final String ").append(fieldName).append(" = \"").append(fieldValue).append("\";\n");
-                }
-            }
-
-            // Generate Java code
-            StringBuilder javaCode = new StringBuilder();
-            javaCode.append("package ").append(TARGET_PACKAGE).append(";\n\n");
-            javaCode.append("public class ").append(className).append(" {\n");
-            javaCode.append("    public static final String PROPERTIES = \"").append(propertiesContent).append("\";\n\n");
-            javaCode.append(fieldsCode);
-            javaCode.append("}\n");
-
-            // Write to file
-            Path javaFile = targetDir.resolve(className + ".java");
-            Files.writeString(javaFile, javaCode.toString());
-            System.out.println("Generated: " + javaFile);
-        } catch (IOException e) {
-            System.err.println("Failed to generate class for " + propertiesPath + ": " + e.getMessage());
-        }
-    }
-
-    private static void generateAggregator(Path targetDir, List<String> generatedClasses) throws Exception {
-        StringBuilder javaCode = new StringBuilder();
-        javaCode.append("package ").append(TARGET_PACKAGE).append(";\n\n");
-        javaCode.append("import com.fasterxml.jackson.databind.JsonNode;\n");
-        javaCode.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
-        javaCode.append("import java.util.HashMap;\n");
-        javaCode.append("import java.util.HashSet;\n");
-        javaCode.append("import java.util.Map;\n");
-        javaCode.append("import java.util.Set;\n");
-        javaCode.append("import java.util.stream.StreamSupport;\n\n");
-        javaCode.append("public class Aggregator {\n");
-        javaCode.append("    public static final Map<String, JsonNode> UUID_TO_INSTANCE = new HashMap<>();\n");
-        javaCode.append("    public static final Map<String, String> UUID_TO_SCHEMA_TYPE = new HashMap<>();\n");
-        javaCode.append("    public static final Map<String, Set<String>> CAR_UUID_TO_ENGINE_UUIDS = new HashMap<>();\n");
-        javaCode.append("    public static final String VERSION_PROPERTIES = VersionProperties.PROPERTIES;\n");
-        javaCode.append("    private static final ObjectMapper mapper = new ObjectMapper();\n\n");
-        javaCode.append("    static {\n");
-
-        // Load all generated classes
-        for (String className : generatedClasses) {
-            if (className.equals("VersionProperties")) continue;
-            javaCode.append("        loadInstance(").append(className).append(".JSON);\n");
-        }
-
-        javaCode.append("    }\n\n");
-        javaCode.append("    private static void loadInstance(String json) {\n");
-        javaCode.append("        try {\n");
-        javaCode.append("            JsonNode instance = mapper.readTree(json);\n");
-        javaCode.append("            String uuid = instance.path(\"uuid\").asText();\n");
-        javaCode.append("            if (uuid.isEmpty()) return;\n");
-        javaCode.append("            UUID_TO_INSTANCE.put(uuid, instance);\n");
-        javaCode.append("            String schemaType = uuid.split(\":\")[0];\n");
-        javaCode.append("            UUID_TO_SCHEMA_TYPE.put(uuid, schemaType);\n");
-        javaCode.append("            if (schemaType.equals(\"car\")) {\n");
-        javaCode.append("                JsonNode rels = instance.path(\"engineRelationships\");\n");
-        javaCode.append("                Set<String> engineUuids = new HashSet<>();\n");
-        javaCode.append("                if (rels.isArray()) {\n");
-        javaCode.append("                    StreamSupport.stream(rels.spliterator(), false).forEach(rel -> {\n");
-        javaCode.append("                        engineUuids.add(rel.path(\"engineUuid\").asText());\n");
-        javaCode.append("                    });\n");
-        javaCode.append("                }\n");
-        javaCode.append("                CAR_UUID_TO_ENGINE_UUIDS.put(uuid, engineUuids);\n");
-        javaCode.append("            }\n");
-        javaCode.append("        } catch (Exception e) {\n");
-        javaCode.append("            e.printStackTrace();\n");
-        javaCode.append("        }\n");
-        javaCode.append("    }\n");
-        javaCode.append("}\n");
-
-        Path aggregatorFile = targetDir.resolve("Aggregator.java");
-        Files.writeString(aggregatorFile, javaCode.toString());
-        System.out.println("Generated Aggregator: " + aggregatorFile);
-    }
 }
+
