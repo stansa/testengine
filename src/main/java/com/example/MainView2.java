@@ -254,7 +254,13 @@ public class MainView extends VerticalLayout {
         Div jsonFormsDiv = new Div();
         jsonFormsDiv.setWidthFull();
         jsonFormsDiv.setHeight("1000px");
-        jsonFormsDiv.getElement().executeJs("jsonforms.renderForm($0, schema, uiSchema, data);", jsonFormsDiv.getId().get());
+
+        // Load example schema and data (replace with actual loading from files)
+        String schema = "{\"type\": \"object\", \"properties\": {\"name\": {\"type\": \"string\"}, \"uuid\": {\"type\": \"string\"}}}";
+        String uiSchema = "{}"; // Optional UI schema
+        String data = "{}"; // Initial data
+
+        jsonFormsDiv.getElement().executeJs("jsonforms.renderForm($0, $1, $2, $3);", jsonFormsDiv.getId().get(), schema, uiSchema, data);
         layout.add(jsonFormsDiv);
         return layout;
     }
